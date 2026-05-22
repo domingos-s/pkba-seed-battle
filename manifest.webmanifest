@@ -1,0 +1,13 @@
+{
+  "name": "Seed Battle Academy",
+  "short_name": "SeedBattle",
+  "description": "A local-first turn-by-turn creature battle PWA synchronized by textable game seeds.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#eef4ff",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "assets/apple-touch-icon.svg", "sizes": "180x180", "type": "image/svg+xml" }
+  ]
+}
