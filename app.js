@@ -107,6 +107,14 @@ function takeTurn(){
   const actor=g.localPlayer, defender=actor === "A" ? "B" : "A";
   const move = creatures[g.players[actor].creatureId].moves.find(m=>m.id===selectedMoveId);
   const payload = { gameId:g.gameId, turn:g.turn+1, actor, prevHash:g.stateHash, action:{type:"attack", moveId:selectedMoveId}, rngSeed:cryptoRandom(), message:$("battleMessage").value.trim().slice(0,120), createdAt:Date.now() };
+  if(payload.turn === 1){
+    payload.setup = {
+      players: {
+        A: { name: g.players.A.name, creatureId: g.players.A.creatureId },
+        B: { name: g.players.B.name, creatureId: g.players.B.creatureId }
+      }
+    };
+  }
   applyPayload(g, payload, true);
   const seed = encodeSeed(payload);
   $("seedOutput").value = seed;
@@ -155,9 +163,34 @@ function applySeedFromDialog(){
   try{
     const payload=decodeSeed($("seedInput").value);
     let g=games.find(x=>x.gameId===payload.gameId);
-    if(!g) throw new Error(`No local game found for Game ID ${payload.gameId}. Create/import that game first.`);
+    if(!g && payload.turn === 1 && payload.setup){
+      g = createGameFromSeedSetup(payload);
+    }
+    if(!g) throw new Error(`No local game found for Game ID ${payload.gameId}. Ask your opponent for their first turn seed, or create/import that game first.`);
     applyPayload(g,payload,false); saveGames(); $("seedDialog").close(); openGame(g.gameId); $("seedOutputCard").classList.add("hidden");
   }catch(err){ $("seedError").textContent=err.message; $("seedError").classList.remove("hidden"); }
+}
+function createGameFromSeedSetup(payload){
+  const setup = payload.setup || {};
+  const a = setup.players?.A;
+  const b = setup.players?.B;
+  if(!creatures[a?.creatureId] || !creatures[b?.creatureId]) throw new Error("Seed is missing valid game setup data.");
+  const g = {
+    gameId: payload.gameId,
+    createdAt: payload.createdAt || Date.now(),
+    turn: 0,
+    nextPlayer: "A",
+    localPlayer: payload.actor === "A" ? "B" : "A",
+    lastMessage: "",
+    players: {
+      A: makePlayer("A", a.name || "Player A", a.creatureId),
+      B: makePlayer("B", b.name || "Player B", b.creatureId)
+    },
+    log: [`Game ${payload.gameId} started. ${(a.name || "Player A")} goes first.`]
+  };
+  g.stateHash = hashState(g);
+  games.unshift(g);
+  return g;
 }
 function hashState(g){
   const canonical = JSON.stringify({gameId:g.gameId,turn:g.turn,nextPlayer:g.nextPlayer,players:g.players,logHead:g.log[0]||""});
