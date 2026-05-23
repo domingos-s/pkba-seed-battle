@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
-  <title>Seed Battle Academy</title>
+  <title>Nightwire Relay</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.svg" />
@@ -16,8 +16,8 @@
       <div class="brand">
         <img src="assets/icon.svg" alt="" />
         <div>
-          <h1>Seed Battle Academy</h1>
-          <p>Turn-by-turn creature battles over text seeds</p>
+          <h1>Nightwire Relay</h1>
+          <p>Covert turn-by-turn ops messaging</p>
         </div>
       </div>
       <button id="installBtn" class="ghost hidden">Install</button>
@@ -27,18 +27,18 @@
       <section id="homeView" class="view active">
         <div class="hero card">
           <div>
-            <h2>Local-first battles. Text-only sync.</h2>
-            <p>Start multiple games, take turns, embed messages, and exchange deterministic seeds by SMS, iMessage, Discord, or anything that carries text.</p>
+            <h2>Stealth-first messaging. Signal by text seed.</h2>
+            <p>Run covert threads, rotate turns, and pass encrypted operation seeds over any channel.</p>
           </div>
           <img src="assets/academy-badge.svg" alt="Academy badge" />
         </div>
 
         <div class="actions-grid">
-          <button id="newGameBtn" class="primary">New Game</button>
+          <button id="newGameBtn" class="primary">New Operation</button>
           <button id="importSeedBtn" class="secondary">Update State from Seed</button>
         </div>
 
-        <h3>Active Games</h3>
+        <h3>Active Operations</h3>
         <div id="gamesList" class="games-list"></div>
       </section>
 
@@ -73,15 +73,15 @@
         <section class="card turn-panel">
           <h3 id="turnStatus">Turn</h3>
           <div class="form-row">
-            <label for="battleMessage">Message embedded in seed</label>
-            <input id="battleMessage" maxlength="120" placeholder="Optional taunt, note, or encouragement" />
+            <label for="battleMessage">Encrypted field message</label>
+            <input id="battleMessage" maxlength="240" placeholder="Transmit mission update" />
           </div>
           <div id="moveButtons" class="move-grid"></div>
-          <button id="endTurnBtn" class="secondary">End Turn / Generate Seed</button>
+          <button id="endTurnBtn" class="secondary">Encrypt Turn / Generate Seed</button>
         </section>
 
         <section id="seedOutputCard" class="card hidden">
-          <h3>Send this seed</h3>
+          <h3>Transmit this cipher seed</h3>
           <textarea id="seedOutput" readonly></textarea>
           <div class="actions-grid compact">
             <button id="copySeedBtn" class="primary">Copy Seed</button>
@@ -90,7 +90,7 @@
         </section>
 
         <section class="card log-card">
-          <h3>Battle Log</h3>
+          <h3>Field Log</h3>
           <div id="battleLog" class="battle-log"></div>
         </section>
       </section>
@@ -99,23 +99,9 @@
 
   <dialog id="newGameDialog">
     <form method="dialog" class="dialog-card">
-      <h2>New Game</h2>
+      <h2>New Operation</h2>
       <label>Your name<input id="creatorName" value="Player A" /></label>
       <label>Opponent name<input id="opponentInputName" value="Player B" /></label>
-      <label>Your creature
-        <select id="starterSelect">
-          <option value="voltkit">Voltkit</option>
-          <option value="embercub">Embercub</option>
-          <option value="sproutle">Sproutle</option>
-        </select>
-      </label>
-      <label>Opponent creature
-        <select id="opponentStarterSelect">
-          <option value="embercub">Embercub</option>
-          <option value="sproutle">Sproutle</option>
-          <option value="voltkit">Voltkit</option>
-        </select>
-      </label>
       <div class="dialog-actions">
         <button value="cancel" class="ghost">Cancel</button>
         <button id="createGameSubmit" value="default" class="primary">Create</button>
@@ -125,9 +111,9 @@
 
   <dialog id="seedDialog">
     <form method="dialog" class="dialog-card">
-      <h2>Update State</h2>
+      <h2>Decrypt Incoming Seed</h2>
       <p>Paste a seed from your opponent. The app will detect the Game ID and apply it to the correct local game.</p>
-      <textarea id="seedInput" placeholder="PKBA1|GAME-ID|TURN|PLAYER|payload|checksum"></textarea>
+      <textarea id="seedInput" placeholder="PKBA2|OP-ID|TURN|AGENT|iv.cipher|checksum"></textarea>
       <div id="seedError" class="error hidden"></div>
       <div class="dialog-actions">
         <button value="cancel" class="ghost">Cancel</button>
