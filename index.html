@@ -24,60 +24,57 @@
     </header>
 
     <main>
-      <section id="homeView" class="view active">
+      <section id="inboxView" class="view active">
         <div class="hero card">
           <div>
             <h2>Stealth-first messaging. Signal by text seed.</h2>
             <p>Run covert threads, rotate turns, and pass encrypted operation seeds over any channel.</p>
           </div>
-          <img src="assets/academy-badge.svg" alt="Academy badge" />
+          <img src="assets/academy-badge.svg" alt="Nightwire badge" />
         </div>
 
         <div class="actions-grid">
-          <button id="newGameBtn" class="primary">New Operation</button>
-          <button id="importSeedBtn" class="secondary">Update State from Seed</button>
+          <button id="newOperationBtn" class="primary">New Operation</button>
+          <button id="importSeedBtn" class="secondary">Import Encrypted Seed</button>
         </div>
 
         <h3>Active Operations</h3>
-        <div id="gamesList" class="games-list"></div>
+        <div id="operationsList" class="operations-list"></div>
       </section>
 
-      <section id="gameView" class="view">
-        <div class="game-header card">
-          <button id="backBtn" class="ghost">← Games</button>
+      <section id="operationView" class="view">
+        <div class="thread-header card">
+          <button id="backBtn" class="ghost">← Operations</button>
           <div>
-            <h2 id="gameTitle">Game</h2>
-            <p id="gameSubtitle"></p>
+            <h2 id="operationTitle">Operation</h2>
+            <p id="operationSubtitle"></p>
           </div>
-          <button id="deleteGameBtn" class="danger ghost">Delete</button>
+          <button id="deleteOperationBtn" class="danger ghost">Delete</button>
         </div>
 
         <div id="messageBanner" class="message-banner hidden"></div>
 
-        <div class="battlefield">
-          <section class="player-card opponent">
-            <div class="player-line"><span id="opponentName">Opponent</span><span id="opponentHp"></span></div>
-            <div class="hpbar"><div id="opponentHpBar"></div></div>
-            <div id="opponentMon" class="monster"></div>
+        <div class="agents-grid">
+          <section class="agent-card peer">
+            <div class="agent-line"><span id="peerAgentName">Peer Agent</span><span id="peerAgentRole"></span></div>
+            <div id="peerAgentPanel" class="agent-panel"><h3>Remote</h3><p>Awaiting secure relay.</p></div>
           </section>
 
-          <section class="versus">VS</section>
+          <section class="versus">↔</section>
 
-          <section class="player-card self">
-            <div class="player-line"><span id="selfName">You</span><span id="selfHp"></span></div>
-            <div class="hpbar"><div id="selfHpBar"></div></div>
-            <div id="selfMon" class="monster"></div>
+          <section class="agent-card self">
+            <div class="agent-line"><span id="selfAgentName">You</span><span id="selfAgentRole"></span></div>
+            <div id="selfAgentPanel" class="agent-panel"><h3>Local</h3><p>Compose encrypted update.</p></div>
           </section>
         </div>
 
         <section class="card turn-panel">
           <h3 id="turnStatus">Turn</h3>
           <div class="form-row">
-            <label for="battleMessage">Encrypted field message</label>
-            <input id="battleMessage" maxlength="240" placeholder="Transmit mission update" />
+            <label for="messageInput">Encrypted field message</label>
+            <input id="messageInput" maxlength="240" placeholder="Transmit mission update" />
           </div>
-          <div id="moveButtons" class="move-grid"></div>
-          <button id="endTurnBtn" class="secondary">Encrypt Turn / Generate Seed</button>
+          <button id="sendTurnBtn" class="secondary">Encrypt Turn / Generate Seed</button>
         </section>
 
         <section id="seedOutputCard" class="card hidden">
@@ -90,21 +87,22 @@
         </section>
 
         <section class="card log-card">
-          <h3>Field Log</h3>
-          <div id="battleLog" class="battle-log"></div>
+          <h3>Transcript</h3>
+          <div id="transcriptLog" class="transcript-log"></div>
         </section>
       </section>
     </main>
   </div>
 
-  <dialog id="newGameDialog">
+  <dialog id="newOperationDialog">
     <form method="dialog" class="dialog-card">
       <h2>New Operation</h2>
-      <label>Your name<input id="creatorName" value="Player A" /></label>
-      <label>Opponent name<input id="opponentInputName" value="Player B" /></label>
+      <label>Agent Alpha<input id="agentAlphaName" value="Agent Alpha" /></label>
+      <label>Agent Bravo<input id="agentBravoName" value="Agent Bravo" /></label>
+      <label>Shared secret (8+ chars)<input id="sharedSecretInput" type="password" minlength="8" /></label>
       <div class="dialog-actions">
         <button value="cancel" class="ghost">Cancel</button>
-        <button id="createGameSubmit" value="default" class="primary">Create</button>
+        <button id="createOperationSubmit" value="default" class="primary">Create</button>
       </div>
     </form>
   </dialog>
@@ -112,7 +110,9 @@
   <dialog id="seedDialog">
     <form method="dialog" class="dialog-card">
       <h2>Decrypt Incoming Seed</h2>
-      <p>Paste a seed from your opponent. The app will detect the Game ID and apply it to the correct local game.</p>
+      <p>Paste a seed and the shared secret. Use Operation ID for existing threads; leave blank for first-turn import.</p>
+      <label>Operation ID (optional)<input id="importOperationId" placeholder="NIGHT-1234" /></label>
+      <label>Shared secret<input id="importSharedSecret" type="password" /></label>
       <textarea id="seedInput" placeholder="PKBA2|OP-ID|TURN|AGENT|iv.cipher|checksum"></textarea>
       <div id="seedError" class="error hidden"></div>
       <div class="dialog-actions">

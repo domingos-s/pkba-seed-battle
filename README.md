@@ -1,47 +1,36 @@
-# Seed Battle Academy
+# Nightwire Relay
 
-A browser-based PWA prototype for local-first, turn-by-turn creature battles synchronized by textable seeds.
+A browser-based PWA for local-first, turn-by-turn covert messaging synchronized by encrypted text seeds.
 
 ## Features
 
-- Static PWA: host on GitHub Pages, Netlify, Vercel, or any static server.
-- Local game storage with `localStorage`.
-- Multiple simultaneous games using visible and embedded Game IDs.
-- Turn seed import/export.
-- Embedded turn messages.
-- Deterministic random resolution from seed payloads.
+- Static PWA deployable on any static host.
+- Local operation storage in `localStorage`.
+- Multiple simultaneous covert threads using Operation IDs.
+- Encrypted seed import/export with AES-GCM.
+- Transcript-style turn messaging.
 - Offline caching through a service worker.
 - SVG-only image assets.
 
 ## Local Testing
 
-Because service workers require an HTTP origin, run through a local static server:
-
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open:
+Open `http://localhost:8080`.
 
-```text
-http://localhost:8080
-```
+## Security Model
 
-## GitHub Pages
-
-Upload all files in this folder to a GitHub repository and enable GitHub Pages for the branch/folder. The app is fully static.
-
-## Current MVP Rules
-
-- Each player has one active creature.
-- Players alternate attacks.
-- Some moves use deterministic seed-based coin flips.
-- A player wins when the opposing creature reaches 0 HP.
+- Seed payloads are encrypted with AES-256-GCM via Web Crypto.
+- Keys are derived with PBKDF2-SHA256 (250,000 iterations) using a user-provided shared secret and operation-specific salt.
+- Integrity and authentication are provided by AES-GCM tags; header checksum detects accidental corruption.
+- Security depends on secret strength: choose a long random passphrase and share it out-of-band.
 
 ## Seed Format
 
 ```text
-PKBA1|GAME-ID|TURN|PLAYER|BASE64_PAYLOAD|CHECKSUM
+PKBA2|OP-ID|TURN|AGENT|IV.CIPHERTEXT|CHECKSUM
 ```
 
-The payload also embeds the Game ID, turn, actor, previous state hash, action, RNG seed, and optional message.
+Encrypted payload contains operation ID, turn, actor, previous state hash, action, and optional setup metadata.
