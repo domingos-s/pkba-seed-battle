@@ -1,39 +1,12 @@
-const PROTOCOL = "PKBA1";
-const STORAGE_KEY = "seedBattleAcademy.games.v1";
-const creatures = {
-  voltkit: {
-    id: "voltkit", name: "Voltkit", type: "Spark", maxHp: 72, img: "assets/creature-voltkit.svg",
-    moves: [
-      { id: "zap", name: "Static Zap", damage: 14, text: "Reliable spark damage." },
-      { id: "bolt", name: "Lucky Bolt", damage: 24, text: "50% chance for +12 damage.", coin: true }
-    ]
-  },
-  embercub: {
-    id: "embercub", name: "Embercub", type: "Flame", maxHp: 78, img: "assets/creature-embercub.svg",
-    moves: [
-      { id: "swipe", name: "Cinder Swipe", damage: 16, text: "Fast claw attack." },
-      { id: "flare", name: "Big Flare", damage: 26, text: "50% chance to miss.", risky: true }
-    ]
-  },
-  sproutle: {
-    id: "sproutle", name: "Sproutle", type: "Leaf", maxHp: 84, img: "assets/creature-sproutle.svg",
-    moves: [
-      { id: "vine", name: "Vine Tap", damage: 13, text: "Light damage and heal 4." , heal: 4},
-      { id: "bloom", name: "Bloom Bash", damage: 21, text: "Solid nature strike." }
-    ]
-  }
-};
+const PROTOCOL = "PKBA2";
+const STORAGE_KEY = "seedBattleAcademy.games.v2";
+
 let games = loadGames();
 let currentGameId = null;
-let selectedMoveId = null;
 let deferredInstallPrompt = null;
 const $ = (id) => document.getElementById(id);
 
-window.addEventListener("load", () => {
-  registerServiceWorker();
-  wireEvents();
-  renderHome();
-});
+window.addEventListener("load", () => { registerServiceWorker(); wireEvents(); renderHome(); });
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstallPrompt = e; $("installBtn").classList.remove("hidden"); });
 
 function wireEvents(){
@@ -42,165 +15,129 @@ function wireEvents(){
   $("backBtn").onclick = () => showView("homeView");
   $("deleteGameBtn").onclick = deleteCurrentGame;
   $("createGameSubmit").onclick = (e) => { e.preventDefault(); createGame(); $("newGameDialog").close(); };
-  $("applySeedSubmit").onclick = (e) => { e.preventDefault(); applySeedFromDialog(); };
+  $("applySeedSubmit").onclick = async (e) => { e.preventDefault(); await applySeedFromDialog(); };
   $("endTurnBtn").onclick = takeTurn;
   $("copySeedBtn").onclick = async () => { await navigator.clipboard.writeText($("seedOutput").value); toastButton($("copySeedBtn"), "Copied"); };
   $("shareSeedBtn").onclick = async () => shareSeed();
   $("installBtn").onclick = async () => { if(deferredInstallPrompt){ deferredInstallPrompt.prompt(); deferredInstallPrompt=null; $("installBtn").classList.add("hidden"); } };
 }
+
 function loadGames(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } }
 function saveGames(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(games)); }
 function showView(id){ document.querySelectorAll(".view").forEach(v=>v.classList.remove("active")); $(id).classList.add("active"); if(id==="homeView") renderHome(); }
+
 function createGame(){
-  const aName = $("creatorName").value.trim() || "Player A";
-  const bName = $("opponentInputName").value.trim() || "Player B";
-  const aMon = $("starterSelect").value;
-  const bMon = $("opponentStarterSelect").value;
+  const aName = $("creatorName").value.trim() || "Person A";
+  const bName = $("opponentInputName").value.trim() || "Person B";
   const gameId = makeGameId();
-  const game = {
-    gameId, createdAt: Date.now(), turn: 0, nextPlayer: "A", localPlayer: "A", lastMessage: "",
-    players: { A: makePlayer("A", aName, aMon), B: makePlayer("B", bName, bMon) }, log: [`Game ${gameId} started. ${aName} goes first.`]
-  };
-  game.stateHash = hashState(game);
-  games.unshift(game); saveGames(); openGame(gameId);
+  const g = { gameId, createdAt: Date.now(), turn: 0, nextPlayer: "A", localPlayer: "A", lastMessage: "", players: { A: {id:"A",name:aName}, B:{id:"B",name:bName} }, transcript: [] };
+  g.stateHash = hashState(g);
+  games.unshift(g); saveGames(); openGame(gameId);
 }
-function makePlayer(id,name,creatureId){ const c=creatures[creatureId]; return {id,name,creatureId,hp:c.maxHp}; }
-function makeGameId(){ const words=["VOLT","EMBER","SPROUT","BADGE","QUEST","ARENA","NOVA","MIST"]; return `${words[Math.floor(Math.random()*words.length)]}-${Math.floor(1000+Math.random()*9000)}`; }
+function makeGameId(){ const words=["CHAT","THREAD","SYNC","NOTE","PULSE","NOVA","MINT","WAVE"]; return `${words[Math.floor(Math.random()*words.length)]}-${Math.floor(1000+Math.random()*9000)}`; }
 function renderHome(){
   const list=$("gamesList"); list.innerHTML="";
-  if(!games.length){ list.innerHTML='<div class="card"><strong>No active games yet.</strong><p>Create a new battle to generate your first game state.</p></div>'; return; }
-  games.forEach(g=>{
-    const b=document.createElement("button"); b.className="game-tile"; b.onclick=()=>openGame(g.gameId);
-    b.innerHTML=`<div><strong>${escapeHtml(g.gameId)} · ${escapeHtml(g.players.A.name)} vs ${escapeHtml(g.players.B.name)}</strong><span>Turn ${g.turn} · ${g.nextPlayer === g.localPlayer ? "Your turn" : "Waiting for opponent"}</span></div><span class="pill">${g.nextPlayer === g.localPlayer ? "PLAY" : "WAIT"}</span>`;
-    list.appendChild(b);
-  });
+  if(!games.length){ list.innerHTML='<div class="card"><strong>No conversations yet.</strong><p>Create one and exchange encrypted turn seeds.</p></div>'; return; }
+  games.forEach(g=>{ const b=document.createElement("button"); b.className="game-tile"; b.onclick=()=>openGame(g.gameId); b.innerHTML=`<div><strong>${escapeHtml(g.gameId)} · ${escapeHtml(g.players.A.name)} ↔ ${escapeHtml(g.players.B.name)}</strong><span>Turn ${g.turn} · ${g.nextPlayer===g.localPlayer?"Your turn":"Waiting"}</span></div><span class="pill">${g.nextPlayer===g.localPlayer?"SEND":"WAIT"}</span>`; list.appendChild(b); });
 }
-function openGame(gameId){ currentGameId=gameId; selectedMoveId=null; showView("gameView"); renderGame(); }
+function openGame(gameId){ currentGameId=gameId; showView("gameView"); renderGame(); }
 function game(){ return games.find(g=>g.gameId===currentGameId); }
+
 function renderGame(){
   const g=game(); if(!g) return showView("homeView");
   const self=g.players[g.localPlayer], opp=g.players[g.localPlayer === "A" ? "B" : "A"];
-  $("gameTitle").textContent = `${g.gameId}`;
-  $("gameSubtitle").textContent = `Turn ${g.turn} · ${g.nextPlayer === g.localPlayer ? "Your turn" : "Waiting for opponent"}`;
-  renderPlayer("self", self); renderPlayer("opponent", opp);
-  $("turnStatus").textContent = g.nextPlayer === g.localPlayer ? "Choose your move" : "Waiting for opponent seed";
-  $("endTurnBtn").disabled = g.nextPlayer !== g.localPlayer || isGameOver(g);
-  $("battleMessage").disabled = g.nextPlayer !== g.localPlayer || isGameOver(g);
-  renderMoves(self, g.nextPlayer === g.localPlayer && !isGameOver(g));
+  $("gameTitle").textContent = g.gameId;
+  $("gameSubtitle").textContent = `Turn ${g.turn} · ${g.nextPlayer === g.localPlayer ? "Your turn" : "Waiting for seed"}`;
+  $("selfName").textContent=self.name; $("selfHp").textContent=`Role ${g.localPlayer}`;
+  $("opponentName").textContent=opp.name; $("opponentHp").textContent=`Role ${g.localPlayer==="A"?"B":"A"}`;
+  $("selfHpBar").style.width="100%"; $("opponentHpBar").style.width="100%";
+  $("selfMon").innerHTML=`<div><h3>You</h3><p>Send one message per turn.</p></div>`;
+  $("opponentMon").innerHTML=`<div><h3>Peer</h3><p>Conversation syncs by encrypted seeds.</p></div>`;
+  $("turnStatus").textContent = g.nextPlayer === g.localPlayer ? "Compose your turn message" : "Waiting for opponent seed";
+  $("endTurnBtn").disabled = g.nextPlayer !== g.localPlayer;
+  $("battleMessage").disabled = g.nextPlayer !== g.localPlayer;
   renderLog(g);
-  if(g.lastMessage){ $("messageBanner").textContent = `Opponent message: “${g.lastMessage}”`; $("messageBanner").classList.remove("hidden"); } else $("messageBanner").classList.add("hidden");
+  if(g.lastMessage){ $("messageBanner").textContent = `Latest incoming: “${g.lastMessage}”`; $("messageBanner").classList.remove("hidden"); } else $("messageBanner").classList.add("hidden");
 }
-function renderPlayer(prefix,p){
-  const c=creatures[p.creatureId];
-  $(`${prefix}Name`).textContent = p.name;
-  $(`${prefix}Hp`).textContent = `${Math.max(0,p.hp)} / ${c.maxHp} HP`;
-  $(`${prefix}HpBar`).style.width = `${Math.max(0, Math.round((p.hp/c.maxHp)*100))}%`;
-  $(`${prefix}Mon`).innerHTML = `<img src="${c.img}" alt="${c.name}"><div><h3>${c.name}</h3><p>${c.type} type · ${p.hp <= 0 ? "Knocked out" : "Ready"}</p></div>`;
-}
-function renderMoves(player, enabled){
-  const wrap=$("moveButtons"); wrap.innerHTML=""; const c=creatures[player.creatureId];
-  c.moves.forEach(m=>{ const btn=document.createElement("button"); btn.className=`move-btn ${selectedMoveId===m.id?'selected':''}`; btn.disabled=!enabled; btn.onclick=()=>{selectedMoveId=m.id; renderGame();}; btn.innerHTML=`<strong>${m.name} · ${m.damage}</strong><span>${m.text}</span>`; wrap.appendChild(btn); });
-}
-function takeTurn(){
-  const g=game(); if(!g || g.nextPlayer!==g.localPlayer || isGameOver(g)) return;
-  if(!selectedMoveId){ alert("Choose a move first."); return; }
-  const actor=g.localPlayer, defender=actor === "A" ? "B" : "A";
-  const move = creatures[g.players[actor].creatureId].moves.find(m=>m.id===selectedMoveId);
-  const payload = { gameId:g.gameId, turn:g.turn+1, actor, prevHash:g.stateHash, action:{type:"attack", moveId:selectedMoveId}, rngSeed:cryptoRandom(), message:$("battleMessage").value.trim().slice(0,120), createdAt:Date.now() };
-  if(payload.turn === 1){
-    payload.setup = {
-      players: {
-        A: { name: g.players.A.name, creatureId: g.players.A.creatureId },
-        B: { name: g.players.B.name, creatureId: g.players.B.creatureId }
-      }
-    };
-  }
+
+async function takeTurn(){
+  const g=game(); if(!g || g.nextPlayer!==g.localPlayer) return;
+  const message = $("battleMessage").value.trim().slice(0,240);
+  if(!message){ alert("Write a message first."); return; }
+  const payload = { gameId:g.gameId, turn:g.turn+1, actor:g.localPlayer, prevHash:g.stateHash, action:{type:"message", text:message}, createdAt:Date.now() };
+  if(payload.turn===1){ payload.setup={players:{A:{name:g.players.A.name},B:{name:g.players.B.name}}}; }
   applyPayload(g, payload, true);
-  const seed = encodeSeed(payload);
-  $("seedOutput").value = seed;
+  $("seedOutput").value = await encodeSeed(payload);
   $("seedOutputCard").classList.remove("hidden");
-  $("battleMessage").value=""; selectedMoveId=null; saveGames(); renderGame();
+  $("battleMessage").value=""; saveGames(); renderGame();
 }
-function applyPayload(g,payload, locallyGenerated=false){
+
+function applyPayload(g,payload,locallyGenerated=false){
   if(payload.gameId !== g.gameId) throw new Error(`Seed belongs to ${payload.gameId}, not ${g.gameId}.`);
   if(payload.turn !== g.turn + 1) throw new Error(`Expected turn ${g.turn + 1}, received ${payload.turn}.`);
-  if(payload.prevHash !== g.stateHash) throw new Error("Previous state hash does not match. This seed is out of order or the local state differs.");
+  if(payload.prevHash !== g.stateHash) throw new Error("Previous state hash mismatch.");
   if(payload.actor !== g.nextPlayer) throw new Error(`It is not ${payload.actor}'s turn.`);
+  if(payload.action?.type !== "message" || !payload.action.text) throw new Error("Invalid message action.");
   const actor=payload.actor, defender=actor === "A" ? "B" : "A";
-  const move = creatures[g.players[actor].creatureId].moves.find(m=>m.id===payload.action.moveId);
-  if(!move) throw new Error("Unknown move in seed.");
-  const rng = seededRandom(`${payload.rngSeed}|${payload.gameId}|${payload.turn}|${move.id}`);
-  let damage = move.damage; let detail="";
-  if(move.coin){ const heads=rng()>0.5; if(heads){ damage += 12; detail = " Coin flip: heads, bonus damage.";} else detail = " Coin flip: tails."; }
-  if(move.risky){ const hit=rng()>0.5; if(!hit){ damage=0; detail=" The attack missed.";} else detail=" The attack landed."; }
-  g.players[defender].hp = Math.max(0, g.players[defender].hp - damage);
-  if(move.heal){ g.players[actor].hp = Math.min(creatures[g.players[actor].creatureId].maxHp, g.players[actor].hp + move.heal); detail += ` ${creatures[g.players[actor].creatureId].name} healed ${move.heal}.`; }
-  g.turn = payload.turn; g.nextPlayer = defender; g.lastMessage = locallyGenerated ? "" : (payload.message || "");
-  g.log.unshift(`${g.players[actor].name}'s ${creatures[g.players[actor].creatureId].name} used ${move.name} for ${damage} damage.${detail}`);
-  if(payload.message) g.log.unshift(`${g.players[actor].name} says: “${payload.message}”`);
-  if(g.players[defender].hp <= 0) g.log.unshift(`${g.players[defender].name}'s ${creatures[g.players[defender].creatureId].name} was knocked out. ${g.players[actor].name} wins!`);
+  g.turn = payload.turn; g.nextPlayer = defender; g.lastMessage = locallyGenerated ? "" : payload.action.text;
+  g.transcript.unshift(`${g.players[actor].name}: ${payload.action.text}`);
   g.stateHash = hashState(g);
 }
-function renderLog(g){ $("battleLog").innerHTML = g.log.map(x=>`<div class="log-entry">${escapeHtml(x)}</div>`).join(""); }
-function isGameOver(g){ return g.players.A.hp<=0 || g.players.B.hp<=0; }
-function encodeSeed(payload){
-  const json = JSON.stringify(payload); const b64 = btoa(unescape(encodeURIComponent(json))).replace(/=/g,"");
-  const checksum = fnv1a(`${payload.gameId}|${payload.turn}|${payload.actor}|${b64}`).slice(0,6);
-  return `${PROTOCOL}|${payload.gameId}|${payload.turn}|${payload.actor}|${b64}|${checksum}`;
+
+function renderLog(g){ $("battleLog").innerHTML = g.transcript.map(x=>`<div class="log-entry">${escapeHtml(x)}</div>`).join("") || '<div class="log-entry">No messages yet.</div>'; }
+
+async function encodeSeed(payload){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(payload.gameId);
+  const clear = new TextEncoder().encode(JSON.stringify(payload));
+  const aad = new TextEncoder().encode(`${payload.gameId}|${payload.turn}|${payload.actor}`);
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: aad }, key, clear));
+  const bundle = `${toB64(iv)}.${toB64(cipher)}`;
+  const checksum = fnv1a(`${payload.gameId}|${payload.turn}|${payload.actor}|${bundle}`).slice(0,8);
+  return `${PROTOCOL}|${payload.gameId}|${payload.turn}|${payload.actor}|${bundle}|${checksum}`;
 }
-function decodeSeed(seed){
+
+async function decodeSeed(seed){
   const parts=seed.trim().replace(/\s/g,"").split("|");
   if(parts.length!==6 || parts[0]!==PROTOCOL) throw new Error("Invalid seed format.");
-  const [,gameId,turn,actor,b64,checksum]=parts;
-  const expected=fnv1a(`${gameId}|${turn}|${actor}|${b64}`).slice(0,6);
-  if(checksum!==expected) throw new Error("Seed checksum failed. Check for copy/paste errors.");
-  const padded=b64 + "=".repeat((4 - b64.length % 4) % 4);
-  const payload=JSON.parse(decodeURIComponent(escape(atob(padded))));
-  if(payload.gameId!==gameId || String(payload.turn)!==turn || payload.actor!==actor) throw new Error("Seed header does not match payload.");
+  const [,gameId,turn,actor,bundle,checksum]=parts;
+  const expected=fnv1a(`${gameId}|${turn}|${actor}|${bundle}`).slice(0,8);
+  if(checksum!==expected) throw new Error("Seed checksum failed.");
+  const [ivB64,cipherB64] = bundle.split(".");
+  if(!ivB64 || !cipherB64) throw new Error("Encrypted seed bundle is malformed.");
+  const key = await deriveKey(gameId);
+  const aad = new TextEncoder().encode(`${gameId}|${turn}|${actor}`);
+  const plain = await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(ivB64),additionalData:aad}, key, fromB64(cipherB64));
+  const payload=JSON.parse(new TextDecoder().decode(plain));
+  if(payload.gameId!==gameId || String(payload.turn)!==turn || payload.actor!==actor) throw new Error("Seed header mismatch.");
   return payload;
 }
-function applySeedFromDialog(){
-  try{
-    const payload=decodeSeed($("seedInput").value);
-    let g=games.find(x=>x.gameId===payload.gameId);
-    if(!g && payload.turn === 1 && payload.setup){
-      g = createGameFromSeedSetup(payload);
-    }
-    if(!g) throw new Error(`No local game found for Game ID ${payload.gameId}. Ask your opponent for their first turn seed, or create/import that game first.`);
-    applyPayload(g,payload,false); saveGames(); $("seedDialog").close(); openGame(g.gameId); $("seedOutputCard").classList.add("hidden");
-  }catch(err){ $("seedError").textContent=err.message; $("seedError").classList.remove("hidden"); }
+
+async function deriveKey(gameId){
+  const enc = new TextEncoder();
+  const material = await crypto.subtle.importKey("raw", enc.encode(`pkba-seed-key|${gameId}`), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:enc.encode("pkba-v2-salt"),iterations:120000,hash:"SHA-256"}, material, {name:"AES-GCM",length:256}, false, ["encrypt","decrypt"]);
 }
+
+function toB64(bytes){ return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/," ").trim(); }
+function fromB64(s){ const b64=s.replace(/-/g,"+").replace(/_/g,"/"); const pad="=".repeat((4-b64.length%4)%4); const bin=atob(b64+pad); return Uint8Array.from(bin,c=>c.charCodeAt(0)); }
+
+async function applySeedFromDialog(){
+  try{ const payload=await decodeSeed($("seedInput").value); let g=games.find(x=>x.gameId===payload.gameId); if(!g&&payload.turn===1&&payload.setup) g=createGameFromSeedSetup(payload); if(!g) throw new Error(`No local conversation found for ${payload.gameId}.`); applyPayload(g,payload,false); saveGames(); $("seedDialog").close(); openGame(g.gameId); $("seedOutputCard").classList.add("hidden"); }
+  catch(err){ $("seedError").textContent=err.message; $("seedError").classList.remove("hidden"); }
+}
+
 function createGameFromSeedSetup(payload){
-  const setup = payload.setup || {};
-  const a = setup.players?.A;
-  const b = setup.players?.B;
-  if(!creatures[a?.creatureId] || !creatures[b?.creatureId]) throw new Error("Seed is missing valid game setup data.");
-  const g = {
-    gameId: payload.gameId,
-    createdAt: payload.createdAt || Date.now(),
-    turn: 0,
-    nextPlayer: "A",
-    localPlayer: payload.actor === "A" ? "B" : "A",
-    lastMessage: "",
-    players: {
-      A: makePlayer("A", a.name || "Player A", a.creatureId),
-      B: makePlayer("B", b.name || "Player B", b.creatureId)
-    },
-    log: [`Game ${payload.gameId} started. ${(a.name || "Player A")} goes first.`]
-  };
-  g.stateHash = hashState(g);
-  games.unshift(g);
-  return g;
+  const a=payload.setup?.players?.A, b=payload.setup?.players?.B;
+  if(!a?.name || !b?.name) throw new Error("Seed setup missing participants.");
+  const g = { gameId: payload.gameId, createdAt: payload.createdAt || Date.now(), turn: 0, nextPlayer: "A", localPlayer: payload.actor === "A" ? "B" : "A", lastMessage: "", players: { A:{id:"A",name:a.name}, B:{id:"B",name:b.name} }, transcript: [] };
+  g.stateHash = hashState(g); games.unshift(g); return g;
 }
-function hashState(g){
-  const canonical = JSON.stringify({gameId:g.gameId,turn:g.turn,nextPlayer:g.nextPlayer,players:g.players,logHead:g.log[0]||""});
-  return fnv1a(canonical);
-}
+
+function hashState(g){ return fnv1a(JSON.stringify({gameId:g.gameId,turn:g.turn,nextPlayer:g.nextPlayer,players:g.players,head:g.transcript[0]||""})); }
 function fnv1a(str){ let h=0x811c9dc5; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h = Math.imul(h,0x01000193)>>>0; } return h.toString(16).padStart(8,"0"); }
-function seededRandom(seed){ let h=parseInt(fnv1a(seed),16)||1; return function(){ h += 0x6D2B79F5; let t=h; t=Math.imul(t ^ t>>>15, t|1); t^=t+Math.imul(t ^ t>>>7, t|61); return ((t ^ t>>>14)>>>0)/4294967296; } }
-function cryptoRandom(){ const a=new Uint32Array(2); crypto.getRandomValues(a); return [...a].map(n=>n.toString(36)).join(""); }
 function escapeHtml(s){ return String(s).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
-async function shareSeed(){ const text=$("seedOutput").value; if(navigator.share){ await navigator.share({title:"Seed Battle Academy turn seed", text}); } else { await navigator.clipboard.writeText(text); toastButton($("shareSeedBtn"), "Copied"); } }
+async function shareSeed(){ const text=$("seedOutput").value; if(navigator.share){ await navigator.share({title:"Encrypted messaging turn seed", text}); } else { await navigator.clipboard.writeText(text); toastButton($("shareSeedBtn"), "Copied"); } }
 function toastButton(btn,text){ const old=btn.textContent; btn.textContent=text; setTimeout(()=>btn.textContent=old,1200); }
-function deleteCurrentGame(){ if(!currentGameId) return; if(confirm("Delete this local game?")){ games=games.filter(g=>g.gameId!==currentGameId); saveGames(); currentGameId=null; showView("homeView"); } }
+function deleteCurrentGame(){ if(!currentGameId) return; if(confirm("Delete this local conversation?")){ games=games.filter(g=>g.gameId!==currentGameId); saveGames(); currentGameId=null; showView("homeView"); } }
 async function registerServiceWorker(){ if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js"); }catch(e){ console.warn(e); } } }
